@@ -57,6 +57,22 @@ app.get('/allSurvey',async (req, res) => {
     const result = await allSurvey.find().sort({ votedNumber: -1 }).limit(6).toArray();
     res.send(result);
   });
+app.get('/survey',async (req, res) => {
+
+    const search = req.query
+
+const filter = {
+  $or: [
+    { title: { $regex: search.search, $options: 'i' } },
+    { category: { $regex: search.search, $options: 'i' } },
+    { votedNumber: { $eq: parseInt(search.search) } }
+  ]
+};
+    
+    const result = await allSurvey.find(filter).toArray();
+    res.send(result);
+  });
+
   
   app.listen(port, () => {
     console.log(`survey is sitting on port ${port}`);
