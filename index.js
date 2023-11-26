@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 require('dotenv').config()
+const jwt = require('jsonwebtoken');
 
 const port = process.env.PORT || 5000;
 
@@ -47,33 +48,70 @@ const Dbconnect = async()=>{
 }
 Dbconnect();
 const allSurvey=client.db("surverDb").collection("allSurvey")
+const userCollection = client.db("surverDb").collection("users");
 
-
-app.get('/', async(req, res) => {
-    res.send('survey is sitting')
+app.post('/jwt', async (req, res) => {
+  const user = req.body;
+  const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+  res.send({ token });
 })
+app.post('/users',async(req,res)=>{
+  const user=req.body
+  const query={email:user.email}
+  const exist=await userCollection.findOne(query)
+  if (exist){
+    return res.send({ message: 'this user already exists', insertedId: null })
+
+  }
+  const result = await userCollection.insertOne(user);
+  res.send(result);
+
+})
+
+app.get('/users',async (req, res) => {
+  console.log(req.headers,">>--->")
+  const result = await userCollection.find().toArray();
+  res.send(result);
+});
+
 app.get('/allSurvey',async (req, res) => {
     
     const result = await allSurvey.find().sort({ votedNumber: -1 }).limit(6).toArray();
     res.send(result);
   });
 app.get('/survey',async (req, res) => {
+  let filter={}
 
-    const search = req.query
+    const search = req.query.search
+    console.log(typeof(search))
+    if (typeof(search)=='string'){
+      console.log('string true')
+      filter = {
+      $or: [
+    { title: { $regex: search, $options: 'i' } },
+    { category: { $regex: search, $options: 'i' } },
+    { votedNumber: { $eq: parseInt(search) } }]
+     }}
 
-const filter = {
-  $or: [
-    { title: { $regex: search.search, $options: 'i' } },
-    { category: { $regex: search.search, $options: 'i' } },
-    { votedNumber: { $eq: parseInt(search.search) } }
-  ]
-};
+
+    
+//     else{
+//       console.log('num true')
+//      filter = {$or: [{ votedNumber: { $eq: parseInt(search) } }]
+  
+// }}
+
+
+
+
     
     const result = await allSurvey.find(filter).toArray();
     res.send(result);
   });
 
-  
+  app.get('/', async(req, res) => {
+    res.send('survey is sitting')
+})
   app.listen(port, () => {
     console.log(`survey is sitting on port ${port}`);
 })
