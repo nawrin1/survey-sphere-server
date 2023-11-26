@@ -52,9 +52,38 @@ const userCollection = client.db("surverDb").collection("users");
 
 app.post('/jwt', async (req, res) => {
   const user = req.body;
-  const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+  const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '2h' });
   res.send({ token });
 })
+
+const verifyToken = (req, res, next) => {
+  console.log('inside verify', req.headers.authorization);
+  if (!req.headers.authorization) {
+    return res.status(401).send({ message: 'unauthorized access' });
+  }
+  const token = req.headers.authorization.split(' ')[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: 'unauthorized access' })
+    }
+    req.decoded = decoded;
+    next();
+  })
+
+}
+const verifyAdmin = async (req, res, next) => {
+  const email = req.decoded.email;
+  console.log(email,"is it admin? verify admin")
+  const query = { email: email };
+  const user = await userCollection.findOne(query);
+  const isAdmin = user?.role === 'admin';
+  if (!isAdmin) {
+    console.log('.......')
+    return res.status(403).send({ message: 'forbidden access' });
+  }
+  next();
+}
+
 app.post('/users',async(req,res)=>{
   const user=req.body
   const query={email:user.email}
@@ -73,6 +102,23 @@ app.get('/users',async (req, res) => {
   const result = await userCollection.find().toArray();
   res.send(result);
 });
+app.get('/users/surveyor/:email', verifyToken,async (req, res) => {
+  const email = req.params.email;
+  console.log(email,"servey from backend")
+
+  if (email !== req.decoded.email) {
+    console.log('not survey')
+    return res.status(403).send({ message: 'forbidden access' })
+  }
+
+  const query = { email: email };
+  const user = await userCollection.findOne(query);
+  let surveyor= false;
+  if (user) {
+    surveyor= user?.role === 'surveyor';
+  }
+  res.send({ surveyor });
+})
 
 app.get('/allSurvey',async (req, res) => {
     
