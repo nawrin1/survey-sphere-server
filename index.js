@@ -3,6 +3,7 @@ const app = express();
 const cors = require('cors');
 require('dotenv').config()
 const jwt = require('jsonwebtoken');
+const { format } = require('date-fns');
 
 const port = process.env.PORT || 5000;
 
@@ -11,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.vqv383i.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -83,6 +84,17 @@ const verifyAdmin = async (req, res, next) => {
   }
   next();
 }
+const verifySurveyor = async (req, res, next) => {
+  const email = req.decoded.email;
+  const query = { email: email };
+  const user = await userCollection.findOne(query);
+  const isSurveyor = user?.role === 'surveyor';
+  if (!isSurveyor) {
+    console.log('.......')
+    return res.status(403).send({ message: 'forbidden access' });
+  }
+  next();
+}
 
 app.post('/users',async(req,res)=>{
   const user=req.body
@@ -97,7 +109,7 @@ app.post('/users',async(req,res)=>{
 
 })
 
-app.get('/users',async (req, res) => {
+app.get('/users',verifyToken,verifyAdmin,async (req, res) => {
   console.log(req.headers,">>--->")
   const result = await userCollection.find().toArray();
   res.send(result);
@@ -125,6 +137,7 @@ app.get('/allSurvey',async (req, res) => {
     const result = await allSurvey.find().sort({ votedNumber: -1 }).limit(6).toArray();
     res.send(result);
   });
+
 app.get('/survey',async (req, res) => {
   let filter={}
 
@@ -139,21 +152,67 @@ app.get('/survey',async (req, res) => {
     { votedNumber: { $eq: parseInt(search) } }]
      }}
 
-
-    
-//     else{
-//       console.log('num true')
-//      filter = {$or: [{ votedNumber: { $eq: parseInt(search) } }]
-  
-// }}
-
-
-
-
-    
+ 
     const result = await allSurvey.find(filter).toArray();
     res.send(result);
   });
+app.get('/surveys',async (req, res) => {
+  let query={}
+
+    const surveyor = req.query.surveyor
+    console.log(surveyor,"surveyor from backend")
+   
+    if(surveyor){
+      query={surveyor:surveyor}
+    }
+    
+
+ 
+    const result = await allSurvey.find(query).toArray();
+    res.send(result);
+  });
+  app.post('/survey',verifyToken,verifySurveyor,async(req, res) => {
+    const timestamp = new Date()
+    console.log(format(timestamp, 'yyyy-MM-dd'));
+    const timevalue=format(timestamp, 'yyyy-MM-dd')
+    const data= req.body;
+    const newitem={ title: data.title, category: data.category,description:data.description,ques1:data.ques1,ques2:data.ques2,ques3:data.ques3,votedNumber:data.votedNumber,liked:data.liked,disliked:data.disliked,status:data.status,deadline:data.deadline,surveyor:data.surveyor, time:timevalue}
+    console.log(newitem)
+    // const newItem={item,time:timevalue}
+    // console.log(item,'surveyyy')
+    const result = await allSurvey.insertOne(newitem);
+    res.send(result);
+  });
+  app.patch('/surveys/:id', async (req, res) => {
+    const item = req.body;
+    const id = req.params.id;
+    console.log('inside update')
+    const filter = { _id: new ObjectId(id) }
+    const updatedDoc = {
+      $set: {
+        title: item.title,
+        category: item.category,
+        description: item.description,
+       ques1: item.ques1,
+       ques2: item.ques2,
+       ques3: item.ques3,
+       deadline:item.deadline
+        
+      }
+    }
+    console.log(updatedDoc)
+
+    const result = await allSurvey.updateOne(filter, updatedDoc)
+    console.log(result)
+    res.send(result);
+  })
+  app.get('/surveys/:id', async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) }
+    const result = await allSurvey.findOne(query);
+    res.send(result);
+  })
+
 
   app.get('/', async(req, res) => {
     res.send('survey is sitting')
