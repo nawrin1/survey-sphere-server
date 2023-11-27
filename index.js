@@ -53,6 +53,7 @@ const userCollection = client.db("surverDb").collection("users");
 const voteCollection = client.db("surverDb").collection("vote");
 const commentCollection = client.db("surverDb").collection("comment");
 const reportCollection = client.db("surverDb").collection("report");
+const unpublishCollection = client.db("surverDb").collection("unpublish");
 
 app.post('/jwt', async (req, res) => {
   const user = req.body;
@@ -112,11 +113,24 @@ app.post('/users',async(req,res)=>{
 
 })
 
-app.get('/users',verifyToken,verifyAdmin,async (req, res) => {
-  console.log(req.headers,">>--->")
-  const result = await userCollection.find().toArray();
+app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
+  console.log(req.headers, "backnd hitted");
+  let filter = {};
+
+  const search = req.query.search;
+  console.log(search,"user rone from back");
+
+  if (search) {
+  
+    filter = {
+      role: { $regex: search, $options: 'i' }
+    };
+  }
+
+  const result = await userCollection.find(filter).toArray();
   res.send(result);
 });
+
 app.get('/users/surveyor/:email', verifyToken,async (req, res) => {
   const email = req.params.email;
   console.log(email,"servey from backend")
@@ -180,20 +194,62 @@ app.get('/survey',async (req, res) => {
   let filter={}
 
     const search = req.query.search
+    console.log(search,"bcz of surer status")
     console.log(typeof(search))
-    if (typeof(search)=='string'){
-      console.log('string true')
-      filter = {
-      $or: [
-    { title: { $regex: search, $options: 'i' } },
-    { category: { $regex: search, $options: 'i' } },
-    { votedNumber: { $eq: parseInt(search) } }]
-     }}
+    if(search){
+      console.log('ehy uou')
+      if (typeof(search)=='string'){
+        
+        filter = {
+        $or: [
+      { title: { $regex: search, $options: 'i' } },
+      { category: { $regex: search, $options: 'i' } },
+      { votedNumber: { $eq: parseInt(search) } }]
+       }}
+  
+   
+      const result = await allSurvey.find(filter).toArray();
+      res.send(result);
 
- 
-    const result = await allSurvey.find(filter).toArray();
-    res.send(result);
+    }
+    else{
+      console.log('admin survey stat')
+      const result = await allSurvey.find().toArray();
+      res.send(result);
+
+
+    }
+    
+    
+
+    
+    
+   
   });
+
+  app.patch('/users/admin/:id',verifyToken, async (req, res) => {
+    const id = req.params.id;
+    const filter = { _id: new ObjectId(id) };
+    const updatedDoc = {
+      $set: {
+        role: 'admin'
+      }
+    }
+    const result = await userCollection.updateOne(filter, updatedDoc);
+    res.send(result);
+  })
+  app.patch('/users/surveyor/:id',verifyToken,async (req, res) => {
+    const id = req.params.id;
+    const filter = { _id: new ObjectId(id) };
+    const updatedDoc = {
+      $set: {
+        role: 'surveyor'
+      }
+    }
+    const result = await userCollection.updateOne(filter, updatedDoc);
+    res.send(result);
+  })
+
 app.get('/surveys',async (req, res) => {
   let query={}
 
@@ -264,6 +320,14 @@ app.get('/comment/:email',async (req, res) => {
     const result = await voteCollection.insertOne(data);
     res.send(result);
   });
+  app.post('/unpublish',verifyToken,async(req, res) => {
+   
+    const data= req.body;
+    
+  
+    const result = await unpublishCollection.insertOne(data);
+    res.send(result);
+  });
   app.post('/comment',verifyToken,async(req, res) => {
    
     const data= req.body;
@@ -313,6 +377,24 @@ app.get('/comment/:email',async (req, res) => {
     const id = req.params.id;
     const query = { _id: new ObjectId(id) }
     const result = await allSurvey.findOne(query);
+    res.send(result);
+  })
+  app.patch('/survey/:id', async (req, res) => {
+    const id = req.params.id;
+    const statusUpdate=req.body
+    // console.log(status,"latst")
+    const query = { _id: new ObjectId(id) }
+    const updatedDoc = {
+      $set: {
+        status:statusUpdate.status
+       
+        
+      }
+    }
+    console.log(updatedDoc)
+
+    const result = await allSurvey.updateOne(query, updatedDoc)
+   
     res.send(result);
   })
 
