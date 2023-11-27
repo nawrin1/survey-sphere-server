@@ -50,6 +50,9 @@ const Dbconnect = async()=>{
 Dbconnect();
 const allSurvey=client.db("surverDb").collection("allSurvey")
 const userCollection = client.db("surverDb").collection("users");
+const voteCollection = client.db("surverDb").collection("vote");
+const commentCollection = client.db("surverDb").collection("comment");
+const reportCollection = client.db("surverDb").collection("report");
 
 app.post('/jwt', async (req, res) => {
   const user = req.body;
@@ -131,6 +134,23 @@ app.get('/users/surveyor/:email', verifyToken,async (req, res) => {
   }
   res.send({ surveyor });
 })
+app.get('/users/userRole/:email', verifyToken,async (req, res) => {
+  const email = req.params.email;
+  console.log(email,"user from backend")
+
+  if (email !== req.decoded.email) {
+    console.log('not user')
+    return res.status(403).send({ message: 'forbidden access' })
+  }
+
+  const query = { email: email };
+  const user = await userCollection.findOne(query);
+  let proUser= false;
+  if (user) {
+    proUser= user?.role === 'pro-user';
+  }
+  res.send({proUser});
+})
 
 app.get('/allSurvey',async (req, res) => {
     
@@ -171,6 +191,29 @@ app.get('/surveys',async (req, res) => {
     const result = await allSurvey.find(query).toArray();
     res.send(result);
   });
+app.get('/vote',async (req, res) => {
+  
+
+    
+
+ 
+    const result = await voteCollection.find().toArray();
+    res.send(result);
+  });
+app.get('/comment',async (req, res) => {
+  let query={}
+  comment=req.query.title
+console.log(comment,"from bacjend")  
+if (comment){
+  query={title:comment}
+}
+
+    
+
+ 
+    const result = await commentCollection.find(query).toArray();
+    res.send(result);
+  });
   app.post('/survey',verifyToken,verifySurveyor,async(req, res) => {
     const timestamp = new Date()
     console.log(format(timestamp, 'yyyy-MM-dd'));
@@ -181,6 +224,30 @@ app.get('/surveys',async (req, res) => {
     // const newItem={item,time:timevalue}
     // console.log(item,'surveyyy')
     const result = await allSurvey.insertOne(newitem);
+    res.send(result);
+  });
+  app.post('/vote',verifyToken,async(req, res) => {
+   
+    const data= req.body;
+    console.log(data,"vote from backend")
+  
+    const result = await voteCollection.insertOne(data);
+    res.send(result);
+  });
+  app.post('/comment',verifyToken,async(req, res) => {
+   
+    const data= req.body;
+    console.log(data,"comment from backend")
+  
+    const result = await commentCollection.insertOne(data);
+    res.send(result);
+  });
+  app.post('/report',verifyToken,async(req, res) => {
+   
+    const data= req.body;
+    console.log(data,"report from backend")
+  
+    const result = await reportCollection.insertOne(data);
     res.send(result);
   });
   app.patch('/surveys/:id', async (req, res) => {
@@ -207,6 +274,12 @@ app.get('/surveys',async (req, res) => {
     res.send(result);
   })
   app.get('/surveys/:id', async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) }
+    const result = await allSurvey.findOne(query);
+    res.send(result);
+  })
+  app.get('/survey/:id', async (req, res) => {
     const id = req.params.id;
     const query = { _id: new ObjectId(id) }
     const result = await allSurvey.findOne(query);
