@@ -134,6 +134,24 @@ app.get('/users/surveyor/:email', verifyToken,async (req, res) => {
   }
   res.send({ surveyor });
 })
+
+app.get('/users/admin/:email', verifyToken,async (req, res) => {
+  const email = req.params.email;
+
+  if (email !== req.decoded.email) {
+    console.log('nottt veridyyy')
+    return res.status(403).send({ message: 'forbidden access' })
+  }
+
+  const query = { email: email };
+  const user = await userCollection.findOne(query);
+  let admin = false;
+  if (user) {
+    admin = user?.role === 'admin';
+    console.log('admin found')
+  }
+  res.send({ admin });
+})
 app.get('/users/userRole/:email', verifyToken,async (req, res) => {
   const email = req.params.email;
   console.log(email,"user from backend")
@@ -208,6 +226,18 @@ if (comment){
   query={title:comment}
 }
 
+    
+
+ 
+    const result = await commentCollection.find(query).toArray();
+    res.send(result);
+  });
+app.get('/comment/:email',async (req, res) => {
+ 
+
+    const email=req.params.email
+    console.log(email,"from backemd comment email")
+    const query={surveyor:email}
     
 
  
