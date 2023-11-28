@@ -4,6 +4,7 @@ const cors = require('cors');
 require('dotenv').config()
 const jwt = require('jsonwebtoken');
 const { format } = require('date-fns');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const port = process.env.PORT || 5000;
 
@@ -54,6 +55,7 @@ const voteCollection = client.db("surverDb").collection("vote");
 const commentCollection = client.db("surverDb").collection("comment");
 const reportCollection = client.db("surverDb").collection("report");
 const unpublishCollection = client.db("surverDb").collection("unpublish");
+const paymentCollection = client.db("surverDb").collection("payment");
 
 app.post('/jwt', async (req, res) => {
   const user = req.body;
@@ -182,6 +184,23 @@ app.get('/users/userRole/:email', verifyToken,async (req, res) => {
     proUser= user?.role === 'pro-user';
   }
   res.send({proUser});
+})
+app.get('/users/role/:email', verifyToken,async (req, res) => {
+  const email = req.params.email;
+  console.log(email,"regular user from backend")
+
+  if (email !== req.decoded.email) {
+    console.log('not auth user')
+    return res.status(403).send({ message: 'forbidden access' })
+  }
+
+  const query = { email: email };
+  const user = await userCollection.findOne(query);
+  let regularUser= false;
+  if (user) {
+    regularUser= user?.role === 'user';
+  }
+  res.send({regularUser});
 })
 
 app.get('/allSurvey',async (req, res) => {
@@ -320,7 +339,7 @@ app.get('/comment/:email',async (req, res) => {
     const result = await voteCollection.insertOne(data);
     res.send(result);
   });
-  app.post('/unpublish',verifyToken,async(req, res) => {
+  app.post('/unpublish',verifyToken,verifyAdmin,async(req, res) => {
    
     const data= req.body;
     
@@ -379,6 +398,11 @@ app.get('/comment/:email',async (req, res) => {
     const result = await allSurvey.findOne(query);
     res.send(result);
   })
+  app.get('/unpublish', async (req, res) => {
+    
+    const result = await unpublishCollection.find().toArray();
+    res.send(result);
+  })
   app.patch('/survey/:id', async (req, res) => {
     const id = req.params.id;
     const statusUpdate=req.body
@@ -397,6 +421,98 @@ app.get('/comment/:email',async (req, res) => {
    
     res.send(result);
   })
+  app.delete('/survey/:id', async (req, res) => {
+    const id = req.params.id;
+    const filter={surveyId:id}
+    console.log(filter,"from del")
+    const result = await unpublishCollection.deleteOne(filter)
+   
+    res.send(result);
+
+
+
+  })
+  app.post('/create-payment-intent', async (req, res) => {
+    const { price } = req.body;
+    const amount = parseInt(price * 100);
+    console.log(amount, 'amount inside the intent')
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount,
+      currency: 'usd',
+      payment_method_types: ['card']
+    });
+
+    res.send({
+      clientSecret: paymentIntent.client_secret
+    })
+  });
+  app.post('/payment', async (req, res) => {
+    const payment = req.body;
+    const result = await paymentCollection.insertOne(payment);
+
+    console.log('payment info from backend', payment);
+    
+
+
+
+    res.send(result);
+  })
+  app.patch('/updatePayment/:email',verifyToken,async (req, res) => {
+    const email= req.params.email;
+    const filter = {email:email};
+    const updatedDoc = {
+      $set: {
+        role: 'pro-user'
+      }
+    }
+    const result = await userCollection.updateOne(filter, updatedDoc);
+    res.send(result);
+  })
+  app.get('/payment',verifyToken,verifyAdmin,async (req, res) => {
+    
+    const result = await paymentCollection.find().toArray();
+    res.send(result);
+  });
+
+  // Assuming you have a Survey model/schema
+
+
+
+// Assuming you have a route handler for getting survey data
+
+app.get('/getSurveyData/:surveyId', async (req, res) => {
+  try {
+    const surveyId = req.params.surveyId;
+    const filter={ _id: new ObjectId(surveyId) }
+    console.log(filter,">>>>>>>>>")
+    const survey = await voteCollection.find(filter).toArray()
+
+    if (!survey) {
+      return res.status(404).json({ error: 'Survey not found' });
+    }
+    console.log(survey,"serrr")
+    let yes=0
+    let no=0
+    survey[0].ans1=='YES'?yes=yes+1:no=no+1
+    survey[0].ans2=='YES'?yes=yes+1:no=no+1
+    survey[0].ans3=='YES'?yes=yes+1:no=no+1
+
+    
+    console.log(yes,no,"count from bacj")
+
+    res.send({
+     yes,no
+      
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+ 
 
 
   app.get('/', async(req, res) => {
