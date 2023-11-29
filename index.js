@@ -396,6 +396,7 @@ app.get('/comment/:email',async (req, res) => {
     const id = req.params.id;
     const query = { _id: new ObjectId(id) }
     const result = await allSurvey.findOne(query);
+    console.log(result,"what")
     res.send(result);
   })
   app.get('/unpublish', async (req, res) => {
@@ -510,6 +511,47 @@ app.get('/getSurveyData/:surveyId', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
+app.get('/getSurveyChartData/:surveyId', async (req, res) => {
+  try {
+    const surveyId = req.params.surveyId;
+    const filter = { title: surveyId };
+    console.log(filter, ">>>>>>>>>");
+    const survey = await voteCollection.find(filter).toArray();
+
+    if (!survey || survey.length === 0) {
+      return res.status(404).json({ error: 'Survey not found' });
+    }
+
+    console.log(survey, "serrr chartttt details");
+
+    let yes = 0;
+    let no = 0;
+
+   
+    survey.forEach(item => {
+     
+      item.ans1 === 'YES' ? (yes += 1) : (no += 1);
+
+      
+      item.ans2 === 'YES' ? (yes += 1) : (no += 1);
+
+    
+      item.ans3 === 'YES' ? (yes += 1) : (no += 1);
+    });
+
+    console.log(yes, no, "count from backend");
+
+    res.send({
+      yes,
+      no,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 
 
  
