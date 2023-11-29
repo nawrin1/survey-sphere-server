@@ -246,7 +246,7 @@ app.get('/survey',async (req, res) => {
    
   });
 
-  app.patch('/users/admin/:id',verifyToken, async (req, res) => {
+  app.patch('/users/admin/:id',verifyToken,verifyAdmin, async (req, res) => {
     const id = req.params.id;
     const filter = { _id: new ObjectId(id) };
     const updatedDoc = {
@@ -257,7 +257,7 @@ app.get('/survey',async (req, res) => {
     const result = await userCollection.updateOne(filter, updatedDoc);
     res.send(result);
   })
-  app.patch('/users/surveyor/:id',verifyToken,async (req, res) => {
+  app.patch('/users/surveyor/:id',verifyToken,verifyAdmin,async (req, res) => {
     const id = req.params.id;
     const filter = { _id: new ObjectId(id) };
     const updatedDoc = {
@@ -284,7 +284,7 @@ app.get('/surveys',async (req, res) => {
     const result = await allSurvey.find(query).toArray();
     res.send(result);
   });
-app.get('/vote',async (req, res) => {
+app.get('/vote',verifyToken,async (req, res) => {
   
 
     
@@ -293,7 +293,7 @@ app.get('/vote',async (req, res) => {
     const result = await voteCollection.find().toArray();
     res.send(result);
   });
-app.get('/comment',async (req, res) => {
+app.get('/comment',verifyToken,async (req, res) => {
   let query={}
   comment=req.query.title
 console.log(comment,"from bacjend")  
@@ -326,8 +326,7 @@ app.get('/comment/:email',async (req, res) => {
     const data= req.body;
     const newitem={ title: data.title, category: data.category,description:data.description,ques1:data.ques1,ques2:data.ques2,ques3:data.ques3,votedNumber:data.votedNumber,liked:data.liked,disliked:data.disliked,status:data.status,deadline:data.deadline,surveyor:data.surveyor, time:timevalue}
     console.log(newitem)
-    // const newItem={item,time:timevalue}
-    // console.log(item,'surveyyy')
+    
     const result = await allSurvey.insertOne(newitem);
     res.send(result);
   });
@@ -337,6 +336,21 @@ app.get('/comment/:email',async (req, res) => {
     console.log(data,"vote from backend")
   
     const result = await voteCollection.insertOne(data);
+    const surveyId = data.surveyId;
+    const likeOrDislike = data.likeordislike;
+    
+    const filter = { _id: new ObjectId(surveyId) };
+    
+    let update;
+    if (likeOrDislike === 'LIKE') {
+      update = { $inc: { liked: 1, votedNumber: 1 } };
+    } else if (likeOrDislike === 'DISLIKE') {
+      update = { $inc: { disliked: 1, votedNumber: 1 } };
+    } 
+    
+    const updateResult = await allSurvey.updateOne(filter, update);
+    
+
     res.send(result);
   });
   app.post('/unpublish',verifyToken,verifyAdmin,async(req, res) => {
@@ -363,7 +377,7 @@ app.get('/comment/:email',async (req, res) => {
     const result = await reportCollection.insertOne(data);
     res.send(result);
   });
-  app.patch('/surveys/:id', async (req, res) => {
+  app.patch('/surveys/:id',verifyToken,verifySurveyor, async (req, res) => {
     const item = req.body;
     const id = req.params.id;
     console.log('inside update')
@@ -399,15 +413,15 @@ app.get('/comment/:email',async (req, res) => {
     console.log(result,"what")
     res.send(result);
   })
-  app.get('/unpublish', async (req, res) => {
+  app.get('/unpublish',verifyToken,verifySurveyor, async (req, res) => {
     
     const result = await unpublishCollection.find().toArray();
     res.send(result);
   })
-  app.patch('/survey/:id', async (req, res) => {
+  app.patch('/survey/:id',verifyToken,verifyAdmin, async (req, res) => {
     const id = req.params.id;
     const statusUpdate=req.body
-    // console.log(status,"latst")
+   
     const query = { _id: new ObjectId(id) }
     const updatedDoc = {
       $set: {
@@ -422,7 +436,7 @@ app.get('/comment/:email',async (req, res) => {
    
     res.send(result);
   })
-  app.delete('/survey/:id', async (req, res) => {
+  app.delete('/survey/:id',verifyToken,verifyAdmin, async (req, res) => {
     const id = req.params.id;
     const filter={surveyId:id}
     console.log(filter,"from del")
