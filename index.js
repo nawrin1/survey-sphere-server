@@ -476,11 +476,11 @@ app.get('/comment/:email',async (req, res) => {
     res.send(result);
   });
 
-  // Assuming you have a Survey model/schema
 
 
 
-// Assuming you have a route handler for getting survey data
+
+
 
 app.get('/getSurveyData/:surveyId', async (req, res) => {
   try {
