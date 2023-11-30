@@ -66,11 +66,14 @@ app.post('/jwt', async (req, res) => {
 const verifyToken = (req, res, next) => {
   console.log('inside verify', req.headers.authorization);
   if (!req.headers.authorization) {
+    console.log('token shomossha?')
+
     return res.status(401).send({ message: 'unauthorized access' });
   }
   const token = req.headers.authorization.split(' ')[1];
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
+      console.log('token shomossha')
       return res.status(401).send({ message: 'unauthorized access' })
     }
     req.decoded = decoded;
@@ -115,7 +118,7 @@ app.post('/users',async(req,res)=>{
 
 })
 
-app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
+app.get('/users', async (req, res) => {
   console.log(req.headers, "backnd hitted");
   let filter = {};
 
@@ -203,9 +206,13 @@ app.get('/users/role/:email', verifyToken,async (req, res) => {
   res.send({regularUser});
 })
 
-app.get('/allSurvey',async (req, res) => {
+// app.get('/allSurvey',async (req, res) => {
     
-    const result = await allSurvey.find().sort({ votedNumber: -1 }).limit(6).toArray();
+//     const result = await allSurvey.find().sort({ votedNumber: -1 }).limit(6).toArray();
+//     res.send(result);
+//   });
+app.get('/allSurvey', async (req, res) => {
+    const result = await allSurvey.find({ status: 'publish' }).sort({ votedNumber: -1 }).limit(6).toArray();
     res.send(result);
   });
 
@@ -307,7 +314,7 @@ if (comment){
     const result = await commentCollection.find(query).toArray();
     res.send(result);
   });
-app.get('/comment/:email',async (req, res) => {
+app.get('/comment/:email',verifyToken,async (req, res) => {
  
 
     const email=req.params.email
@@ -413,9 +420,14 @@ app.get('/comment/:email',async (req, res) => {
     console.log(result,"what")
     res.send(result);
   })
-  app.get('/unpublish',verifyToken,verifySurveyor, async (req, res) => {
+  app.get('/unpublish',verifyToken, async (req, res) => {
+    let filter={}
+    const surveyor=req.query.email
+    if(surveyor){
+      filter={surveyor:surveyor}
+    }
     
-    const result = await unpublishCollection.find().toArray();
+    const result = await unpublishCollection.find(filter).toArray();
     res.send(result);
   })
   app.patch('/survey/:id',verifyToken,verifyAdmin, async (req, res) => {
