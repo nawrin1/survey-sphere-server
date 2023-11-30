@@ -38,17 +38,15 @@ const client = new MongoClient(uri, {
 //   }
 // }
 // run().catch(console.dir);
-const Dbconnect = async()=>{
-    try{
-        await client.connect()
-        console.log('database connected ')
-
-    }
-    catch(error){
-        console.log(error.mesage)
-    }
+const dbConnect = async () => {
+  try {
+      client.connect()
+      console.log('DB Connected Successfully')
+  } catch (error) {
+      console.log(error.name, error.message)
+  }
 }
-Dbconnect();
+dbConnect()
 const allSurvey=client.db("surverDb").collection("allSurvey")
 const userCollection = client.db("surverDb").collection("users");
 const voteCollection = client.db("surverDb").collection("vote");
@@ -56,6 +54,9 @@ const commentCollection = client.db("surverDb").collection("comment");
 const reportCollection = client.db("surverDb").collection("report");
 const unpublishCollection = client.db("surverDb").collection("unpublish");
 const paymentCollection = client.db("surverDb").collection("payment");
+app.get('/', async(req, res) => {
+  res.send('survey is sitting')
+})
 
 app.post('/jwt', async (req, res) => {
   const user = req.body;
@@ -583,9 +584,7 @@ app.get('/getSurveyChartData/:surveyId', async (req, res) => {
  
 
 
-  app.get('/', async(req, res) => {
-    res.send('survey is sitting')
-})
+
   app.listen(port, () => {
     console.log(`survey is sitting on port ${port}`);
 })
